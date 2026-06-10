@@ -1,0 +1,18 @@
+# Compiled binaries
+/bin/
+myapp
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Architecture-specific/Performance data
+*.test
+*.prof
+
+# IDE specific files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
