@@ -34,7 +34,7 @@ type Task struct {
 
 	MaxRetries int `json:"max_retries"`
 	Attempts   int `json:"attempt"`
-	LastError  int `json:"last_error"`
+	LastError  string `json:"last_error"`
 
 	DependsOn []string `json:"depends_on"`
 
