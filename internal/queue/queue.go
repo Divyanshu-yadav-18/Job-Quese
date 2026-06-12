@@ -72,8 +72,8 @@ func (q *Queue) Pop() (*model.Task, error) {
 	defer q.mu.Unlock()
 
 	now := time.Now()
-	for i, task := range q.tasks{
-		if task.RunAt.After(now){
+	for i, task := range q.tasks {
+		if task.RunAt.After(now) {
 			continue
 		}
 
@@ -85,11 +85,11 @@ func (q *Queue) Pop() (*model.Task, error) {
 	return nil, ErrQueueEmpty
 }
 
-func (q* Queue) Wait(ctx context.Context){
-	select{
-	case <- q.notify:
-	case <- ctx.Done():
-		case <- time.After(500 * time.Millisecond):
+func (q *Queue) Wait(ctx context.Context) {
+	select {
+	case <-q.notify:
+	case <-ctx.Done():
+	case <-time.After(500 * time.Millisecond):
 	}
 }
 
@@ -103,11 +103,11 @@ func (q *Queue) Peek(n int) []*model.Task {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if n > len(q.tasks){
+	if n > len(q.tasks) {
 		n = len(q.tasks)
 	}
 
 	result := make([]*model.Task, n)
-	copy(result,q.tasks[:n])
+	copy(result, q.tasks[:n])
 	return result
 }
