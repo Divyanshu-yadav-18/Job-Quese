@@ -41,7 +41,7 @@ func (w *Worker) Start(ctx context.Context){
 		}
 
 		task, err := w.queue.Pop()
-		if err != queue.ErrQueueEmpty{
+		if err == queue.ErrQueueEmpty{
 			w.status = "idle"
 			w.queue.Wait(ctx)
 			continue
