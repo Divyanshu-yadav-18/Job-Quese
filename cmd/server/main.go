@@ -24,11 +24,13 @@ func main() {
 		fmt.Println("\n[main] shutdown signal received")
 		cancel()
 	}()
+	
+	delayed := queue.NewDelayedQueue()
+	ready := queue.New(100)
+	pool := worker.NewPool(5, ready, delayed)
+	scheduler := queue.NewScheduler(delayed, ready)
 
-	q := queue.New(100)
-	pool := worker.NewPool(5, q)
-
-	tasks := []struct {
+	immediateTasks := []struct {
 		id       string
 		priority int
 	}{
@@ -39,17 +41,25 @@ func main() {
 		{"task-epsilon", 5},
 	}
 
-	for _, t := range tasks {
+	for _, t := range immediateTasks {
 		task := model.NewTask(t.id, "simulate", `{"msg":"hello"}`, t.priority)
-		q.Push(task)
-		fmt.Printf("[main] pushed %s (priority %d)\n", t.id, t.priority)
+		task.Status = model.StatusReady
+		ready.Push(task)
+		fmt.Printf("[main] pushed %s to ready queue (priority %d)\n", t.id, t.priority)
 
 	}
 
-	delayed := model.NewTask("task-delayed", "simulate", `{}`, 5)
-	delayed.RunAt = time.Now().Add(5 * time.Second)
-	q.Push(delayed)
-	fmt.Println("[main] pushed delayed task (runs in 5s)")
+	d1 := model.NewTask("task-delayed-5s", "simulate", `{}`, 5)
+	d1.RunAt = time.Now().Add(5 * time.Second)
+	delayed.Add(d1)
+	fmt.Println("[main] pushed task-delayed-5s (runs in 5s)")
+
+	d2 := model.NewTask("task-delayed-2s", "simulate", `{}`, 8)
+	d2.RunAt = time.Now().Add(2 * time.Second)
+	delayed.Add(d2)
+	fmt.Println("[main] pushed task-delayed-2s (runs in 2s)")
+
+	go scheduler.Run(ctx)
 
 	pool.Start(ctx)
 	fmt.Println("[main] clean exit")
