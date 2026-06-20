@@ -13,12 +13,12 @@ import (
 // worker -> ID, Queue, Status
 type Worker struct {
 	ID      int
-	ready   *queue.Queue
-	delayed *queue.DelayedQueue
+	ready   queue.JobQueue
+	delayed queue.DelayedJobQueue
 	status  string
 }
 
-func New(id int, ready *queue.Queue, delayed *queue.DelayedQueue) *Worker {
+func New(id int, ready queue.JobQueue, delayed queue.DelayedJobQueue) *Worker {
 	return &Worker{
 		ID:     id,
 		ready: ready,

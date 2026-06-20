@@ -11,21 +11,19 @@ import (
 type Pool struct {
 	workers []*Worker
 	size int
-	ready *queue.Queue
-	delayed *queue.DelayedQueue
+	queue queue.JobQueue
 }
 
-func NewPool(size int, q *queue.Queue, d *queue.DelayedQueue) *Pool{
+func NewPool(size int, q queue.JobQueue, dq queue.DelayedJobQueue) *Pool{
 	workers := make([]*Worker, size)
 	for i := range workers {
-		workers[i] = New(i,q, d)
+		workers[i] = New(i,q, dq)
 	}
 
 	return &Pool{
 		workers: workers,
 		size: size,
-		ready: q,
-		delayed: d,
+		queue: q,
 	}
 }
 
