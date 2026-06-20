@@ -9,11 +9,11 @@ import (
 )
 
 type Scheduler struct {
-	delayed *DelayedQueue
-	ready   *Queue
+	delayed DelayedJobQueue
+	ready   JobQueue
 }
 
-func NewScheduler(delayed *DelayedQueue, ready *Queue) *Scheduler {
+func NewScheduler(delayed DelayedJobQueue, ready JobQueue) *Scheduler {
 	return &Scheduler{delayed: delayed, ready: ready}
 }
 
