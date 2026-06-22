@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"github.com/Divyanshu-yadav-18/Job-Quese/internal/model"
+	"github.com/Divyanshu-yadav-18/Job-Quese/internal/api"
 	"github.com/Divyanshu-yadav-18/Job-Quese/internal/queue"
 	"github.com/Divyanshu-yadav-18/Job-Quese/internal/store"
 	"github.com/Divyanshu-yadav-18/Job-Quese/internal/worker"
@@ -39,24 +39,21 @@ func main() {
 	pool := worker.NewPool(5, ready, delayed)
 
 	// Push test tasks
-	for _, t := range []struct {
-		id       string
-		priority int
-	}{
-		{"task-alpha", 9}, {"task-beta", 3}, {"task-gamma", 7},
-		{"task-delta", 1}, {"task-epsilon", 5},
-	} {
-		task := model.NewTask(t.id, "simulate", `{}`, t.priority)
-		task.Status = model.StatusReady
-		ready.Push(task)
-		fmt.Printf("[main] pushed %s (priority %d)\n", t.id, t.priority)
-	}
+	handler := api.NewHandler(ready, delayed, redisStore)
+	router := api.NewRouter(handler)
+	server := &http.Server{Addr: ":8080", Handler: router}
 
-	d1 := model.NewTask("task-delayed-5s", "simulate", `{}`, 5)
-	d1.RunAt = time.Now().Add(5 * time.Second)
-	delayed.Add(d1)
+	go func ()  {
+		fmt.Println("[http] listening on: 8080")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Println("[http] error", err)
+		}
+	}()
 
 	go scheduler.Run(ctx)
-	pool.Start(ctx)
+	go pool.Start(ctx)
+
+	<-ctx.Done()
+	server.Close()
 	fmt.Println("[main] clean exit")
 }
