@@ -16,6 +16,8 @@ const (
 
 	KeyTaskPrefix = "jq:task:"
 	KeyWorkerPrefix = "jq:worker:"
+
+	KeyWorkerStatus = "jq:workers"
 )
 
 func TaskKey (id string) string {

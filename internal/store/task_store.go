@@ -36,5 +36,22 @@ func (s *RedisStore) GetTask(ctx context.Context, id string) (*model.Task, error
 	}
 
 	return &task, nil
+}
 
+// heartbeat
+
+func (s *RedisStore) ClaimTask(ctx context.Context, workerID int, taskID string, ttl time.Duration) error {
+	key := fmt.Sprintf("jq:worker:%d:state",workerID)
+	state := map[string]interface{}{
+		"status" : "running",
+		"task_id": taskID,
+		"since" : time.Now().Unix(),
+		"worker_id": workerID,
+	}
+	pipe:= s.Client.TxPipeline()
+	pipe.HSet(ctx, key, state)
+	pipe.Expire(ctx, key, ttl)
+	_, err := pipe.Exec(ctx)
+
+	return err
 }
