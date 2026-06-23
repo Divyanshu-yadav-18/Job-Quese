@@ -55,3 +55,25 @@ func (s *RedisStore) ClaimTask(ctx context.Context, workerID int, taskID string,
 
 	return err
 }
+
+func (s *RedisStore) HeartBeatWorker(ctx context.Context, workerID int, ttl time.Duration) error {
+	key := fmt.Sprintf("jq:worker:%d:state", workerID)
+	return s.Client.Expire(ctx, key, ttl).Err()
+}
+
+func (s *RedisStore) WorkerIdle(ctx context.Context, workerID int, taskID string, ttl time.Duration) error {
+	key := fmt.Sprintf("jq:worker:%d:state",workerID)
+	state := map[string]interface{}{
+		"status" : "idle",
+		"task_id": "",
+		"since" : time.Now().Unix(),
+		"worker_id": workerID,
+	}
+	pipe:= s.Client.TxPipeline()
+	pipe.HSet(ctx, key, state)
+	pipe.Expire(ctx, key, ttl)
+	_, err := pipe.Exec(ctx)
+
+	return err
+}
+
