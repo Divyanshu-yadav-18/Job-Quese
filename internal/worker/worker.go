@@ -9,7 +9,6 @@ import (
 	"github.com/Divyanshu-yadav-18/Job-Quese/internal/model"
 	"github.com/Divyanshu-yadav-18/Job-Quese/internal/queue"
 	"github.com/Divyanshu-yadav-18/Job-Quese/internal/store"
-	"gvisor.dev/gvisor/pkg/sleep"
 )
 
 // worker -> ID, Queue, Status
@@ -49,7 +48,7 @@ func (w *Worker) Start(ctx context.Context) {
 		task, err := w.ready.Pop()
 		if err == queue.ErrQueueEmpty {
 			w.status = "idle"
-			w.store.WorkerIdle(ctx, w.ID, time.Second*30)
+			w.store.WorkerIdle(ctx, w.ID, 30*time.Second)
 			w.ready.Wait(ctx)
 			continue
 		}
@@ -120,6 +119,10 @@ func (w *Worker) execute(ctx context.Context, task *model.Task) {
 
 func simulateWork(ctx context.Context, task *model.Task) error {
 	duration := time.Duration(200+rand.Intn(600)) * time.Millisecond
+
+	if task.Type == "slow" {
+		duration = 15 * time.Second
+	}
 
 	select {
 	case <-time.After(duration):
