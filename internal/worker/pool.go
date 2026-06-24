@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/Divyanshu-yadav-18/Job-Quese/internal/queue"
+	"github.com/Divyanshu-yadav-18/Job-Quese/internal/store"
 )
 
 type Pool struct {
@@ -14,10 +15,10 @@ type Pool struct {
 	queue queue.JobQueue
 }
 
-func NewPool(size int, q queue.JobQueue, dq queue.DelayedJobQueue) *Pool{
+func NewPool(size int, q queue.JobQueue, dq queue.DelayedJobQueue, s *store.RedisStore) *Pool{
 	workers := make([]*Worker, size)
 	for i := range workers {
-		workers[i] = New(i,q, dq)
+		workers[i] = New(i,q, dq, s)
 	}
 
 	return &Pool{
