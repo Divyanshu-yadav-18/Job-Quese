@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/Divyanshu-yadav-18/Job-Quese/internal/model"
@@ -61,7 +62,7 @@ func (s *RedisStore) HeartBeatWorker(ctx context.Context, workerID int, ttl time
 	return s.Client.Expire(ctx, key, ttl).Err()
 }
 
-func (s *RedisStore) WorkerIdle(ctx context.Context, workerID int, taskID string, ttl time.Duration) error {
+func (s *RedisStore) WorkerIdle(ctx context.Context, workerID int, ttl time.Duration) error {
 	key := fmt.Sprintf("jq:worker:%d:state",workerID)
 	state := map[string]interface{}{
 		"status" : "idle",
@@ -77,3 +78,29 @@ func (s *RedisStore) WorkerIdle(ctx context.Context, workerID int, taskID string
 	return err
 }
 
+type WorkerState struct{
+	WorkerID int
+	Status string
+	TaskID string
+	Since int64
+}
+
+func (s *RedisStore) AllWorkerStates(ctx context.Context, workerCount int) ([]WorkerState, error){
+	states := make([]WorkerState, 0)
+	for i := 0; i< workerCount; i++{
+		key := fmt.Sprintf("jq:worker:%d:state", i)
+		result, err := s.Client.HGetAll(ctx, key).Result()
+		if err != nil || len(result) == 0 {
+			states = append(states, WorkerState{WorkerID: i, Status: "dead"})
+			continue
+		}
+		since, _ := strconv.ParseInt(result["since"],10, 64)
+		states = append(states, WorkerState{
+			WorkerID: i,
+			Status: result["status"],
+			TaskID: result["task_id"],
+			Since: since,
+		})
+	}
+	return states, nil
+}

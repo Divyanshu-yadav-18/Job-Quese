@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Divyanshu-yadav-18/Job-Quese/internal/api"
 	"github.com/Divyanshu-yadav-18/Job-Quese/internal/queue"
@@ -31,29 +32,37 @@ func main() {
 		fmt.Println("failed to connect to redis:", err)
 		os.Exit(1)
 	}
-	defer redisStore.Close()
+	//defer redisStore.Close()
 
 	ready := queue.NewRedisQueue(redisStore, store.KeyReadyQueue)
 	delayed := queue.NewRedisDelayedQueue(redisStore, store.KeyDelayedQueue)
 	scheduler := queue.NewScheduler(delayed, ready)
-	pool := worker.NewPool(5, ready, delayed)
-
+	pool := worker.NewPool(5, ready, delayed, redisStore)
 	// Push test tasks
 	handler := api.NewHandler(ready, delayed, redisStore)
 	router := api.NewRouter(handler)
 	server := &http.Server{Addr: ":8080", Handler: router}
 
-	go func ()  {
+	monitor := worker.NewMonitor(redisStore, delayed, 5)
+	go monitor.Run(ctx)
+
+	go func() {
 		fmt.Println("[http] listening on: 8080")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Println("[http] error", err)
 		}
 	}()
 
+	monitor = worker.NewMonitor(redisStore, delayed, 5)
+	monitor.RecoverOrphans(context.Background()) // ← before pool starts
+	go monitor.Run(ctx)
 	go scheduler.Run(ctx)
-	go pool.Start(ctx)
+	pool.Start(ctx)
 
 	<-ctx.Done()
 	server.Close()
+
+	time.Sleep(500 * time.Millisecond) // a little delay for workers to cleanup
+	redisStore.Close()
 	fmt.Println("[main] clean exit")
 }
