@@ -73,3 +73,8 @@ func (m *Monitor) checkWorker(ctx context.Context) {
 
 	}
 }
+
+func (m *Monitor) RecoverOrphans(ctx context.Context) {
+    fmt.Println("[monitor] checking for orphaned tasks from previous run...")
+    m.checkWorker(ctx)
+}

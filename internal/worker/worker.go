@@ -35,6 +35,18 @@ func New(id int, ready queue.JobQueue, delayed queue.DelayedJobQueue, s *store.R
 func (w *Worker) Start(ctx context.Context) {
 	fmt.Printf("[W%d] started\n", w.ID)
 
+	existing, err := w.store.AllWorkerStates(ctx, w.ID+1)
+	if err == nil && len(existing) > w.ID {
+		prev := existing[w.ID]
+		if prev.Status == "running" && prev.TaskID != "" {
+			fmt.Printf("[W%d] found orphaned task %s from previous run\n",
+				w.ID, prev.TaskID)
+		}
+
+	}
+
+	w.store.WorkerIdle(ctx, w.ID, 30*time.Second)
+
 	for {
 		//check context done
 		select {
