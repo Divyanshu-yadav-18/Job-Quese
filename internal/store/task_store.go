@@ -42,14 +42,14 @@ func (s *RedisStore) GetTask(ctx context.Context, id string) (*model.Task, error
 // heartbeat
 
 func (s *RedisStore) ClaimTask(ctx context.Context, workerID int, taskID string, ttl time.Duration) error {
-	key := fmt.Sprintf("jq:worker:%d:state",workerID)
+	key := fmt.Sprintf("jq:worker:%d:state", workerID)
 	state := map[string]interface{}{
-		"status" : "running",
-		"task_id": taskID,
-		"since" : time.Now().Unix(),
+		"status":    "running",
+		"task_id":   taskID,
+		"since":     time.Now().Unix(),
 		"worker_id": workerID,
 	}
-	pipe:= s.Client.TxPipeline()
+	pipe := s.Client.TxPipeline()
 	pipe.HSet(ctx, key, state)
 	pipe.Expire(ctx, key, ttl)
 	_, err := pipe.Exec(ctx)
@@ -63,14 +63,14 @@ func (s *RedisStore) HeartBeatWorker(ctx context.Context, workerID int, ttl time
 }
 
 func (s *RedisStore) WorkerIdle(ctx context.Context, workerID int, ttl time.Duration) error {
-	key := fmt.Sprintf("jq:worker:%d:state",workerID)
+	key := fmt.Sprintf("jq:worker:%d:state", workerID)
 	state := map[string]interface{}{
-		"status" : "idle",
-		"task_id": "",
-		"since" : time.Now().Unix(),
+		"status":    "idle",
+		"task_id":   "",
+		"since":     time.Now().Unix(),
 		"worker_id": workerID,
 	}
-	pipe:= s.Client.TxPipeline()
+	pipe := s.Client.TxPipeline()
 	pipe.HSet(ctx, key, state)
 	pipe.Expire(ctx, key, ttl)
 	_, err := pipe.Exec(ctx)
@@ -78,29 +78,40 @@ func (s *RedisStore) WorkerIdle(ctx context.Context, workerID int, ttl time.Dura
 	return err
 }
 
-type WorkerState struct{
+type WorkerState struct {
 	WorkerID int
-	Status string
-	TaskID string
-	Since int64
+	Status   string
+	TaskID   string
+	Since    int64
 }
 
-func (s *RedisStore) AllWorkerStates(ctx context.Context, workerCount int) ([]WorkerState, error){
+func (s *RedisStore) AllWorkerStates(ctx context.Context, workerCount int) ([]WorkerState, error) {
 	states := make([]WorkerState, 0)
-	for i := 0; i< workerCount; i++{
+	for i := 0; i < workerCount; i++ {
 		key := fmt.Sprintf("jq:worker:%d:state", i)
 		result, err := s.Client.HGetAll(ctx, key).Result()
 		if err != nil || len(result) == 0 {
 			states = append(states, WorkerState{WorkerID: i, Status: "dead"})
 			continue
 		}
-		since, _ := strconv.ParseInt(result["since"],10, 64)
+		since, _ := strconv.ParseInt(result["since"], 10, 64)
 		states = append(states, WorkerState{
 			WorkerID: i,
-			Status: result["status"],
-			TaskID: result["task_id"],
-			Since: since,
+			Status:   result["status"],
+			TaskID:   result["task_id"],
+			Since:    since,
 		})
 	}
 	return states, nil
+}
+
+func (s *RedisStore) RegisterDependency(ctx context.Context, dependencyID, dependentID string) error {
+	key := fmt.Sprintf("jq:task:dependents:%s", dependencyID)
+	return s.Client.SAdd(ctx, key, dependentID).Err()
+}
+
+func (s *RedisStore) GetDependents(ctx context.Context, taskID string) ([]string, error) {
+	key := fmt.Sprintf("jq:task:dependents:%s", taskID)
+	return s.Client.SMembers(ctx, key).Result()
+
 }
