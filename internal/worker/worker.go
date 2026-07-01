@@ -147,3 +147,48 @@ func simulateWork(ctx context.Context, task *model.Task) error {
 	}
 	return nil
 }
+
+func (w *Worker) resolveDependents(ctx context.Context, completedTask *model.Task) {
+	dependents, err := w.store.GetDependents(ctx, completedTask.ID)
+	if err != nil || len(dependents) == 0 {
+		return
+	}
+
+	for _, depID := range dependents {
+		dependent, err := w.store.GetTask(ctx, depID)
+		if err != nil {
+			fmt.Printf("[W%d] could not fetch dependent %s: %v\n", w.ID, depID, err)
+			continue
+		}
+
+		if dependent.Status != model.StatusBlocked {
+			continue
+		}
+
+		failed, failedDepID, err := w.store.HasFailedDependency(ctx, dependent.DependsOn)
+		if err != nil {
+			continue
+		}
+
+		if failed {
+			dependent.Status = model.StatusDead
+			dependent.LastError = fmt.Sprintf("dependency %s failed", failedDepID)
+			w.store.SaveTask(ctx, dependent)
+			fmt.Printf("[W%d] task %s failed because dependency %s died\n",
+				w.ID, depID, failedDepID)
+			continue
+		}
+
+		met, err := w.store.AreDependenciesMet(ctx, dependent.DependsOn)
+		if err != nil || !met {
+			continue
+		}
+
+		dependent.Status = model.StatusReady
+		w.store.SaveTask(ctx, dependent)
+		w.ready.Push(dependent)
+		fmt.Printf("[W%d] unblocked task %s → ready queue\n", w.ID, depID)
+
+	}
+
+}
