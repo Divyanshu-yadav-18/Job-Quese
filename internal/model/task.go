@@ -20,6 +20,8 @@ const (
 	StatusCompleted TaskStatus = "completed"
 	StatusDead      TaskStatus = "dead"
 	StatusFailed    TaskStatus = "failed"
+
+	StatusBlocked   TaskStatus = "blocked"
 )
 
 type Task struct {
