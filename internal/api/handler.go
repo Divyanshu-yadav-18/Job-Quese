@@ -51,6 +51,24 @@ func (h *Handler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		task.MaxRetries = req.MaxRetries
 	}
 
+	if len(task.DependsOn)>0 {
+		task.Status = model.StatusBlocked
+
+		if err := h.store.SaveTask(r.Context(), task); err != nil {
+			respondError(w, http.StatusInternalServerError, "failed to save the task")
+			return
+		}
+
+		for _, depID := range task.DependsOn{
+			if err := h.store.RegisterDependency(r.Context(), depID, task.ID, ); err != nil{
+				respondError(w, http.DefaultMaxHeaderBytes, "failed to register the dependency")
+				return
+			}
+		}
+		respondJSON(w, http.StatusCreated, toTaskResponse(task))
+		return
+	}
+
 	if req.DelaySecs > 0 {
 		task.RunAt = time.Now().Add(time.Duration(req.DelaySecs) * time.Second)
 		task.Status = model.StatusPending
