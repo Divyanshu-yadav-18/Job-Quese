@@ -107,6 +107,8 @@ func (w *Worker) execute(ctx context.Context, task *model.Task) {
 		w.store.SaveTask(ctx, task)
 		fmt.Printf("[W%d] completed task %s in %d ms }\n", w.ID, task.ID, time.Since(now).Milliseconds())
 
+		w.resolveDependents(ctx, task)
+
 		return
 	}
 
@@ -124,6 +126,7 @@ func (w *Worker) execute(ctx context.Context, task *model.Task) {
 		task.Status = model.StatusDead
 		w.store.SaveTask(ctx, task)
 		fmt.Printf("[W%d] task %s exhausted retries -> dead letter\n", w.ID, task.ID)
+		w.resolveDependents(ctx, task)
 
 		//Dead letter Queue logic
 	}
@@ -188,7 +191,5 @@ func (w *Worker) resolveDependents(ctx context.Context, completedTask *model.Tas
 		w.store.SaveTask(ctx, dependent)
 		w.ready.Push(dependent)
 		fmt.Printf("[W%d] unblocked task %s → ready queue\n", w.ID, depID)
-
 	}
-
 }
