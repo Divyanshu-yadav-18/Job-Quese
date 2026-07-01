@@ -115,3 +115,30 @@ func (s *RedisStore) GetDependents(ctx context.Context, taskID string) ([]string
 	return s.Client.SMembers(ctx, key).Result()
 
 }
+
+func (s *RedisStore) AreDependenciesMet (ctx context.Context, dependsOn []string) (bool, error) {
+	for _, depID := range dependsOn{
+		task, err := s.GetTask(ctx, depID)
+		if err != nil{
+			return false, fmt.Errorf("dependency %s not found: %w", depID, err)
+		}
+		if task.Status != model.StatusCompleted{
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (s *RedisStore) HasFailedDependency(ctx context.Context, dependsOn []string)(bool, string, error){
+	for _, depId := range dependsOn{
+		task, err := s.GetTask(ctx, depId)
+		if err != nil {
+			return false, "", err
+		}
+		if task.Status == model.StatusDead{
+			return true, depId, nil
+		}
+	}
+
+	return false, "", nil
+}
